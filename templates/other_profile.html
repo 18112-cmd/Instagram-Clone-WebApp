@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>User Profile - Instagram Clone</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script type="module" src="/static/firebase-login.js"></script>
+</head>
+<body class="bg-light">
+
+<div class="container mt-5">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 id="username-display">User Profile</h2>
+    <button id="follow-button" class="btn btn-primary">Follow</button>
+    <button id="unfollow-button" class="btn btn-secondary" style="display: none;">Unfollow</button>
+    <a href="/timeline" class="btn btn-primary me-2">Timeline</a>
+    <button id="sign-out" class="btn btn-danger">Sign Out</button>
+  </div>
+
+  <h4 class="mb-3">Posts</h4>
+  <div id="posts" class="row g-3"></div>
+
+</div>
+
+<script>
+// Assume you pass userId in URL like /user/{userId}
+const userId = window.location.pathname.split('/').pop();
+
+async function fetchUserProfile() {
+  const response = await fetch(`/api/user/${userId}`, { credentials: "include" });
+  const data = await response.json();
+
+  document.getElementById('username-display').innerText = data.username;
+
+  const postsDiv = document.getElementById('posts');
+  data.posts.forEach(post => {
+    postsDiv.innerHTML += `
+      <div class="col-md-4">
+        <div class="card shadow-sm">
+          <img src="${post.image_url}" class="card-img-top" alt="Post Image">
+          <div class="card-body">
+            <p class="card-text">${post.caption}</p>
+          </div>
+        </div>
+      </div>
+    `;
+  });
+
+  if (data.is_following) {
+    document.getElementById('follow-button').style.display = 'none';
+    document.getElementById('unfollow-button').style.display = 'block';
+  }
+}
+
+document.getElementById('follow-button').addEventListener('click', async () => {
+  await fetch('/follow', {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ target_user_id: userId })
+  });
+  window.location.reload();
+});
+
+document.getElementById('unfollow-button').addEventListener('click', async () => {
+  await fetch('/unfollow', {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ target_user_id: userId })
+  });
+  window.location.reload();
+});
+
+window.onload = fetchUserProfile;
+</script>
+
+</body>
+</html>

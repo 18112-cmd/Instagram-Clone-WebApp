@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Timeline - Instagram Clone</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script type="module" src="/static/firebase-login.js"></script>
+</head>
+<body class="bg-light">
+
+<div class="container mt-5">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Timeline</h2>
+    <div>
+      <a href="/search-users" class="btn btn-success me-2">Search Users</a>
+      <a href="/profile" class="btn btn-primary me-2">Go to Profile</a> 
+      <button id="sign-out" class="btn btn-danger">Sign Out</button> 
+    </div>
+  </div>
+
+  <div id="timeline" class="d-flex flex-column gap-4"></div>
+
+</div>
+
+<script>
+// Fetch timeline posts
+async function fetchTimeline() {
+  const response = await fetch("/api/timeline", { credentials: "include" });
+  const data = await response.json();
+
+  const timelineDiv = document.getElementById("timeline");
+  timelineDiv.innerHTML = "";
+
+  data.forEach(post => {
+    const postId = post.id || post.image_url.split('/').pop().split('.')[0]; // fallback if no post.id
+    timelineDiv.innerHTML += `
+      <div class="card shadow-sm">
+        <div class="card-header">
+          <strong>${post.Username}</strong>
+        </div>
+        <img src="${post.image_url}" class="card-img-top" alt="Post Image">
+        <div class="card-body">
+          <p class="card-text">${post.caption}</p>
+
+          <!-- Comments Section -->
+          <div class="mt-3" id="comments-section-${postId}">
+            <div class="list-group mb-2" id="top-comments-${postId}"></div>
+
+            <button class="btn btn-link p-0" onclick="expandComments('${postId}')">Show all comments</button>
+
+            <div class="input-group mt-2">
+              <input type="text" id="comment-input-${postId}" class="form-control" placeholder="Add a comment (max 200 chars)" maxlength="200">
+              <button class="btn btn-primary" onclick="addComment('${postId}')">Post</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // After adding post HTML, load its top comments
+    setTimeout(() => {
+      loadTopComments(postId);
+    }, 100);
+  });
+}
+
+// Load top 5 comments
+async function loadTopComments(postId) {
+  try {
+    const response = await fetch(`/comments/${postId}`, { credentials: "include" });
+    const comments = await response.json();
+
+    const commentsDiv = document.getElementById(`top-comments-${postId}`);
+    commentsDiv.innerHTML = "";
+
+    comments.forEach(comment => {
+      commentsDiv.innerHTML += `
+        <div class="list-group-item">
+          <strong>${comment.username}</strong>: ${comment.comment}
+        </div>
+      `;
+    });
+  } catch (error) {
+    console.error("Failed to load comments:", error);
+  }
+}
+
+// Expand all comments
+async function expandComments(postId) {
+  try {
+    const response = await fetch(`/comments/${postId}?limit=100`, { credentials: "include" });
+    const comments = await response.json();
+
+    const commentsDiv = document.getElementById(`top-comments-${postId}`);
+    commentsDiv.innerHTML = "";
+
+    comments.forEach(comment => {
+      commentsDiv.innerHTML += `
+        <div class="list-group-item">
+          <strong>${comment.username}</strong>: ${comment.comment}
+        </div>
+      `;
+    });
+  } catch (error) {
+    console.error("Failed to expand comments:", error);
+  }
+}
+
+// Add new comment
+async function addComment(postId) {
+  const commentInput = document.getElementById(`comment-input-${postId}`);
+  const commentText = commentInput.value.trim();
+  if (!commentText) return;
+
+  try {
+    await fetch('/add-comment', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ post_id: postId, comment: commentText })
+    });
+
+    commentInput.value = "";
+    loadTopComments(postId);
+  } catch (error) {
+    console.error("Failed to post comment:", error);
+  }
+}
+
+window.onload = fetchTimeline;
+</script>
+
+</body>
+</html>
